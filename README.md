@@ -1,4 +1,4 @@
-> **统一入口（2026-10-26）**：当前源码、运维说明和恢复资料已合并至 [codex-network-resilience](https://github.com/lvdacong/codex-network-resilience)，[换电脑与恢复说明](https://github.com/lvdacong/codex-network-resilience/tree/main/recovery)。主仓库为私有仓库，需有权限的账号登录。
+> **统一入口（2026-10-26）**：当前源码、运维说明和恢复资料已合并至 [网络代理与恢复工具](https://github.com/lvdacong/network-proxy-toolkit)，[换电脑与恢复说明](https://github.com/lvdacong/network-proxy-toolkit/tree/main/recovery)。主仓库为私有仓库，需有权限的账号登录。
 >
 > 本公开仓库保留为历史应急镜像，不自动更新；下方 2026-10-22 快照继续可用，不包含订阅和密钥。
 
