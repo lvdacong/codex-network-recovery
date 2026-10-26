@@ -1,3 +1,7 @@
+> **统一入口（2026-10-26）**：当前源码、运维说明和恢复资料已合并至 [codex-network-resilience](https://github.com/lvdacong/codex-network-resilience)，[换电脑与恢复说明](https://github.com/lvdacong/codex-network-resilience/tree/main/recovery)。主仓库为私有仓库，需有权限的账号登录。
+>
+> 本公开仓库保留为历史应急镜像，不自动更新；下方 2026-10-22 快照继续可用，不包含订阅和密钥。
+
 # Windows 网络控制恢复资料
 
 本仓库是公开的恢复资料存档，供另一台电脑上的 Codex 或维护人员在获得本人授权的远程访问后排障使用。日常运行仍使用本机统一的网络控制目录与托盘，本仓库不会运行或接管代理。
