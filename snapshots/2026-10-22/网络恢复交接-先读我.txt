@@ -1,0 +1,71 @@
+﻿网络控制恢复交接（2026-10-22）
+
+用途：把本文件及同目录源码 ZIP 交给另一台电脑上的 Codex，在获得本机远程访问后排障恢复。
+本文件不建立远程通道；请先用已有且经本人授权的远程工具连接。如果本机完全断网，可能需要本地人员先恢复联网。
+
+一、必须保留的使用逻辑
+1. 托盘或 Ctrl+P 的“自动/直连”只控制接入本地代理的其他应用，包括使用系统代理的 Chrome。不是 TUN 全机接管。
+2. 自动：国内/局域网直连，国外走选定节点；直连：其他应用不使用境外节点。Windows 系统代理开关仍然开启，这是正常设计。
+3. Codex 独立保持自动分流：OpenAI/ChatGPT 通信走选定节点；侧栏其他网站按国内直连、国外代理。外部应用切成直连不影响它。
+4. 所有代理流量共用手动选择的节点。直连档也能换节点，Codex 的新连接跟随；其他应用仍直连。选择节点不覆盖国内直连规则。
+5. 节点策略 locked，不自动切国家或按延迟轮换。“自动”指自动分流。已有 Codex 长连接保留到自然重连；不要为切节点强行打断。
+6. 托盘当前节点有勾选和 [当前]。只有展开时启动测速，逐项显示最新延迟；等待时标注“测速中/上次值”，保持展开时每轮完成 5 秒后重测。收起立即停用定时器并取消未完成/排队测速，启动时也不测速。locked 策略下旧后台控制器进入 locked_idle，不再网络探测；核心原生测速 interval=0。点选仍做一次必要的连通检查，显示“切换中”，内核回读和设置保存完成后再移动勾选；失败保留或恢复原节点，无法确认时不打勾。现有 12 个快捷节点：日本 A09/A10/A11/A08/A02，美国 A01/A02，新加坡 A01，台湾 A01，法国 A01，德国 A01，英国 A01。真实名称须从当前订阅取得。
+7. 外部直连仅保留到本次 Windows 登录；下次登录默认自动。
+
+二、本机入口与实现位置
+仓库：C:\data\项目\Codex-network-resilience
+核心：C:\Program Files\Clash Verge\verge-mihomo.exe
+代理：127.0.0.1:7897；控制接口：127.0.0.1:9097（有本机密钥，禁止回显）。
+桌面“网络控制”入口调用 scripts\ensure_network_session.ps1 -ShowWindow。
+常驻会话由当前用户的 CodexNetworkControlAtLogon-<SID> 计划任务独立托管，不能依赖某一条 Codex 对话的子进程存活。
+
+关键源码：
+- scripts\QuickNetwork.cs：原生托盘、热键、选中标记、节点选择与连接处理。
+- scripts\network_tray.ps1、quick_network.py：托盘构建与启动。
+- scripts\build_proxy_config.py：持久化规则生成器。修分流必须同步这里，不能只改生成的 YAML。
+- scripts\control_network.ps1、network_mode.ps1、network_nodes.py：模式与节点控制。
+- scripts\ensure_network_session.ps1、start_network_session.ps1：独立会话与恢复。
+- docs\运维说明.md：详细记录，以“极简网络控制（2026-10-22，当前行为）”为准；早期历史逻辑可能已被替代。
+
+关键本机状态：
+- .state\mihomo\config.yaml：真实节点和控制密钥，敏感，严禁打印或上传。
+- .state\network-control\state.json、node-policy.json、quick-nodes.json、quick-status.json：模式、选定节点、快捷列表、托盘状态。
+- .state\logs\：本机诊断日志；对外分享前脱敏。
+
+核心始终 rule 模式。Codex 相关进程先进入 codex-always-auto 子规则，其他应用经 EXTERNAL-MODE 的 PASS/DIRECT 选择。共享出口组为 CODEX-FAILOVER；必须保留 find-process-mode=strict。升级后如可执行文件名变化，要复核进程匹配。
+
+三、给接手 Codex 的恢复顺序
+先只读检查：当前端口监听、进程路径/创建时间、计划任务、quick-status.json 的更新时间、外部模式与实际节点。记录当前状态后再修；旧 PID 和本文节点不是恢复时的权威值。保留其他训练、聊天和后台任务。
+
+在 PowerShell 中：
+Set-Location 'C:\data\项目\Codex-network-resilience'
+Get-NetTCPConnection -State Listen -LocalPort 7897,9097 -ErrorAction SilentlyContinue
+Get-ScheduledTask -TaskName 'CodexNetworkControlAtLogon-*' -ErrorAction SilentlyContinue
+
+如果只是托盘或会话没起来，优先通过已有独立任务恢复：
+powershell.exe -NoProfile -File .\scripts\ensure_network_session.ps1 -ShowWindow
+
+仅在核实核心确实缺失、旧配置仍有效且会话入口未恢复它时，诊断性启动旧配置：
+powershell.exe -NoProfile -File .\scripts\start_resilient_proxy.ps1 -WarmStandby -SkipSubscriptionRefresh
+随后恢复独立计划任务托管，不能以远程终端的临时进程作为长期修复。
+
+任务缺失时先预览安装器：
+powershell.exe -NoProfile -File .\scripts\install_network_control.ps1 -DryRun
+读清输出后再安装；如 Windows 要求管理员授权，由本人完成正常 UAC 授权。
+
+若入口、核心都正常但外网不通，先区分 Wi-Fi/酒店认证、节点故障、订阅失效和服务端故障；人工选一个已检测可用节点。不要自动遍历切换生产节点。
+不要把整个核心改成 direct、全局关闭系统代理、删除 .state、批量结束 Python/PowerShell/Codex，或为排障刷新正在执行的聊天。
+
+四、源码备份怎样用
+同目录 network-recovery-source-2026-10-22.zip 包含这次未提交修改在内的源码、测试和运维说明；SNAPSHOT-MANIFEST.json 逐文件记录 SHA256。
+基线提交：e66e3a146514956bce72e3dee60bacc8ea22220b。仅检出这个提交不能恢复本次全部修改。
+ZIP 校验值见 network-recovery-source-2026-10-22.sha256.txt。
+恢复时先解压到新临时目录，检查清单并与现有仓库对比，再定点恢复。不要盲目 git reset、pull 或覆盖其他未提交修改。
+此包不含 .state、.tools、订阅凭据、控制密钥或可执行依赖，不是整机备份。先保留原目录；若状态/订阅丢失，需要本人从原客户端或供应商恢复授权订阅，不能仅靠此包重建节点。
+程序依赖按 requirements.txt 和现有启动脚本恢复；不要把本机敏感配置上传到公开仓库。
+
+五、恢复后核验
+确认：自动档国内直连/国外选定节点；直连档其他应用直连而 Codex 保持分流；直连中换节点后模式不变；恢复自动沿用新节点；托盘只标记一个当前节点；策略 locked。
+优先用隔离测试验证，生产中的模式往返会重建 Chrome 连接，安排在本人允许的空闲时段；不要关闭现有 Codex 流。
+路由改造已通过 67 项定向测试、9 项真实 Mihomo 隔离路由测试；最新托盘版本通过 12 项原生异步回归，后台控制器通过 17 项测试，覆盖收起停止测速、取消排队及 locked 不发网络请求。已读取真实 Codex/ChatGPT 路由并部署托盘；核心和原节点未变。隔离路由测试使用进程名夹具，不等于已登录业务会话或长期稳定性保证。托盘回归入口是 tests\quick_network_regression.ps1，使用 Windows PowerShell 5.1 的 -STA 模式运行；替代 HTTP 传输不修改生产代理。
+交接时实时状态：外部 Auto，Codex Auto，共享节点“日本 A02 | IEPL”，12 个快捷节点。后续以实时读取为准。
